@@ -1,20 +1,172 @@
-# 🤖 AI Development Assistant MCP Server
+# Project Awareness MCP Server
 
-Welcome to your AI-powered development toolkit, designed as a Model Context Protocol (MCP) server for Cursor! This project provides intelligent coding assistance through custom AI tools. Note that this is mostly a tutorial demo, and not a production-ready tool.
+This is a custom Model Context Protocol (MCP) server for Cursor that provides enhanced awareness of the project structure and its validation/formatting system.
 
-## ✨ Features
+## Features
 
-### 🎨 Code Architect
+### Project Structure Tool
 
-Call advanced reasoning LLMs to generate plans and instructions for coding agents.
+Analyzes the project structure and returns a representation of it.
 
-### 📸 Screenshot Buddy
+```json
+{
+  "rootDir": "/path/to/project",
+  "depth": 5,
+  "includeDirs": ["src", "components"],
+  "excludeDirs": ["node_modules", ".git"]
+}
+```
 
-Take UI design screenshots and use them with the composer agent.
+### Validation System Tool
 
-### 🔍 Code Review
+Analyzes the validation and formatting system, providing details about its structure and capabilities.
 
-Use git diffs to trigger code reviews.
+```json
+{
+  "action": "overview"
+}
+```
+
+Possible actions:
+
+- `overview` - Provides a high-level overview of the validation system
+- `details` - Provides detailed information about the ValidationService and FormatterService
+- `schemas` - Lists all available validation schemas
+- `formatters` - Lists all formatters
+- `validators` - Lists all validators
+
+You can also specify a particular file to examine:
+
+```json
+{
+  "specificFile": "ValidationService.ts"
+}
+```
+
+### File Analyzer Tool
+
+Analyzes specific files in the project to extract insights about their structure and patterns.
+
+```json
+{
+  "filePath": "src/components/SomeComponent.tsx",
+  "analysis": "validation"
+}
+```
+
+Possible analysis types:
+
+- `basic` - Basic file analysis with validation detection
+- `validation` - Focused validation analysis
+- `imports` - Analysis of imports
+- `exports` - Analysis of exports
+- `dependencies` - Analysis of dependencies and validation usage
+
+### Validation Checker Tool
+
+Scans components for validation rule compliance and suggests improvements.
+
+```json
+{
+  "target": "src/components/forms",
+  "fix": true
+}
+```
+
+This tool helps identify files that:
+
+- May need to use ValidationService but don't
+- Are using direct regex tests instead of ValidationService
+- Contain string manipulation that should use FormatterService
+- Have custom validation functions that might duplicate existing validators
+
+### Component Generator Tool
+
+Generates React components with proper validation patterns for forms and inputs.
+
+```json
+{
+  "name": "ContactForm",
+  "type": "form",
+  "description": "A form for collecting contact information",
+  "fields": [
+    {
+      "name": "name",
+      "type": "string",
+      "validations": ["required", "minLength:2"]
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "validations": ["required", "email"]
+    },
+    {
+      "name": "phone",
+      "type": "string",
+      "validations": ["phone"],
+      "formatting": "phone"
+    }
+  ]
+}
+```
+
+This tool will generate a component that:
+
+- Uses ValidationService for all validations
+- Uses FormatterService for formatting
+- Follows project conventions and best practices
+- Properly structures the form with error handling
+
+## Additional Tools
+
+### Screenshot Tool
+
+Takes screenshots of web pages (from the original example).
+
+### Architect Tool
+
+Analyzes code and tasks to provide architectural guidance (from the original example).
+
+### Code Review Tool
+
+Reviews code changes (from the original example).
+
+## Setup
+
+1. Make sure your `.cursor/mcp.json` file contains:
+
+```json
+{
+  "mcpServers": {
+    "project-awareness": {
+      "command": "node",
+      "args": ["/absolute/path/to/secure-wire-synchronize/cursor-mcp/build/index.js"],
+      "env": {
+        "OPENAI_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+2. Restart Cursor or refresh the MCP servers
+
+## Using the Tools
+
+In the Cursor Chat/Composer, you can explicitly ask for the tools:
+
+- "Can you analyze the structure of this project?"
+- "Give me an overview of our validation system"
+- "Analyze the validation patterns in src/components/SomeForm.tsx"
+- "Check if our components properly use ValidationService"
+- "Generate a contact form component with name, email, and phone fields"
+
+Or just ask questions, and Cursor will use the appropriate tools:
+
+- "How does our validation system work?"
+- "What validation schemas do we have?"
+- "Does this component follow our validation standards?"
+- "Create a new form component for collecting payment information"
 
 ## 🚀 Getting Started
 
@@ -23,7 +175,7 @@ Use git diffs to trigger code reviews.
 First, you'll need to set up your environment variables. Create a file at `src/env/keys.ts`:
 
 ```typescript
-export const OPENAI_API_KEY = "your_key_here";
+export const OPENAI_API_KEY = 'your_key_here'
 // Add any other keys you need
 ```
 

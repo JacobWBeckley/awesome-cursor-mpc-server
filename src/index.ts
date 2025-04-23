@@ -1,145 +1,176 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import bodyParser from 'body-parser'
+import cors from 'cors'
+import express, { Request, Response } from 'express'
+import { z } from 'zod'
 import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-
-import {
-  screenshotToolName,
-  screenshotToolDescription,
-  ScreenshotToolSchema,
-  runScreenshotTool,
-} from "./tools/screenshot.js";
-
-import {
-  architectToolName,
   architectToolDescription,
+  architectToolName,
   ArchitectToolSchema,
   runArchitectTool,
-} from "./tools/architect.js";
-
+} from './tools/architect'
 import {
-  codeReviewToolName,
   codeReviewToolDescription,
+  codeReviewToolName,
   CodeReviewToolSchema,
   runCodeReviewTool,
-} from "./tools/codeReview.js";
+} from './tools/codeReview'
+import {
+  documentationHelperToolDescription,
+  documentationHelperToolName,
+  DocumentationHelperToolSchema,
+  runDocumentationHelperTool,
+} from './tools/documentationHelper'
+import {
+  fileAnalyzerToolDescription,
+  fileAnalyzerToolName,
+  FileAnalyzerToolSchema,
+  runFileAnalyzerTool,
+} from './tools/fileAnalyzer'
+import {
+  projectStructureToolDescription,
+  projectStructureToolName,
+  ProjectStructureToolSchema,
+  runProjectStructureTool,
+} from './tools/projectStructure'
+import {
+  runScreenshotTool,
+  screenshotToolDescription,
+  screenshotToolName,
+  ScreenshotToolSchema,
+} from './tools/screenshot'
+import {
+  runValidationSystemTool,
+  validationSystemToolDescription,
+  validationSystemToolName,
+  ValidationSystemToolSchema,
+} from './tools/validationSystem'
 
-/**
- * A minimal MCP server providing three Cursor Tools:
- *   1) Screenshot
- *   2) Architect
- *   3) CodeReview
- */
+const app = express()
+const port = 3130
 
-// 1. Create an MCP server instance
-const server = new Server(
-  {
-    name: "cursor-tools",
-    version: "2.0.1",
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  },
-);
+app.use(cors())
+app.use(bodyParser.json())
 
-// 2. Define the list of tools
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: screenshotToolName,
-        description: screenshotToolDescription,
-        inputSchema: {
-          type: "object",
-          properties: {
-            url: {
-              type: "string",
-              description: "Full URL to screenshot",
-            },
-            relativePath: {
-              type: "string",
-              description: "Relative path appended to http://localhost:3000",
-            },
-            fullPathToScreenshot: {
-              type: "string",
-              description:
-                "Path to where the screenshot file should be saved. This should be a cwd-style full path to the file (not relative to the current working directory) including the file name and extension.",
-            },
-          },
-          required: [],
-        },
-      },
-      {
-        name: architectToolName,
-        description: architectToolDescription,
-        inputSchema: {
-          type: "object",
-          properties: {
-            task: {
-              type: "string",
-              description: "Description of the task",
-            },
-            code: {
-              type: "string",
-              description: "Concatenated code from one or more files",
-            },
-          },
-          required: ["task", "code"],
-        },
-      },
-      {
-        name: codeReviewToolName,
-        description: codeReviewToolDescription,
-        inputSchema: {
-          type: "object",
-          properties: {
-            folderPath: {
-              type: "string",
-              description:
-                "Path to the full root directory of the repository to diff against main",
-            },
-          },
-          required: ["folderPath"],
-        },
-      },
-    ],
-  };
-});
-
-// 3. Implement the tool call logic
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case screenshotToolName: {
-      const validated = ScreenshotToolSchema.parse(args);
-      return await runScreenshotTool(validated);
-    }
-    case architectToolName: {
-      const validated = ArchitectToolSchema.parse(args);
-      return await runArchitectTool(validated);
-    }
-    case codeReviewToolName: {
-      const validated = CodeReviewToolSchema.parse(args);
-      return await runCodeReviewTool(validated);
-    }
-    default:
-      throw new Error(`Unknown tool: ${name}`);
-  }
-});
-
-// 4. Start the MCP server with a stdio transport
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Cursor Tools MCP Server running on stdio");
+// Define the response structure for a tool
+interface ToolResponse {
+  name: string
+  description: string
+  schema?: Record<string, any>
 }
 
-main().catch((error) => {
-  console.error("Fatal error:", error);
-  process.exit(1);
-});
+// Define the basic request structure for invoking a tool
+const InvokeToolRequestSchema = z.object({
+  name: z.string(),
+  arguments: z.record(z.any()).optional(),
+})
+
+/**
+ * A simple endpoint to check if the server is running
+ */
+app.get('/', (req: Request, res: Response) => {
+  res.send('MCP Server is running!')
+})
+
+/**
+ * List available tools
+ *
+ * Available tools:
+ * - projectStructure: Analyzes the project structure and returns a representation of it
+ * - validationSystem: Analyzes the validation and formatting system
+ * - fileAnalyzer: Analyzes specific files to extract insights about their structure and patterns
+ * - screenshot: Takes a screenshot of a URL or local path
+ * - architect: Provides architecture recommendations for a given task and code
+ * - codeReview: Reviews code changes against main branch
+ * - documentationHelper: Searches through project documentation to find relevant information
+ */
+app.get('/tools', (req: Request, res: Response) => {
+  const tools: ToolResponse[] = [
+    {
+      name: projectStructureToolName,
+      description: projectStructureToolDescription,
+      schema: ProjectStructureToolSchema.shape,
+    },
+    {
+      name: validationSystemToolName,
+      description: validationSystemToolDescription,
+      schema: ValidationSystemToolSchema.shape,
+    },
+    {
+      name: fileAnalyzerToolName,
+      description: fileAnalyzerToolDescription,
+      schema: FileAnalyzerToolSchema.shape,
+    },
+    {
+      name: screenshotToolName,
+      description: screenshotToolDescription,
+      schema: ScreenshotToolSchema.shape,
+    },
+    {
+      name: architectToolName,
+      description: architectToolDescription,
+      schema: ArchitectToolSchema.shape,
+    },
+    {
+      name: codeReviewToolName,
+      description: codeReviewToolDescription,
+      schema: CodeReviewToolSchema.shape,
+    },
+    {
+      name: documentationHelperToolName,
+      description: documentationHelperToolDescription,
+      schema: DocumentationHelperToolSchema.shape,
+    },
+  ]
+
+  res.json(tools)
+})
+
+/**
+ * Invoke a tool with the provided arguments
+ */
+app.post('/invoke', async (req: Request, res: Response) => {
+  try {
+    const parseResult = InvokeToolRequestSchema.safeParse(req.body)
+
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Invalid request format',
+        details: parseResult.error.format(),
+      })
+    }
+
+    const { name, arguments: args = {} } = parseResult.data
+
+    // Handle different tools
+    switch (name) {
+      case projectStructureToolName:
+        return res.json(await runProjectStructureTool(args))
+      case validationSystemToolName:
+        return res.json(await runValidationSystemTool(args))
+      case fileAnalyzerToolName:
+        return res.json(await runFileAnalyzerTool(args))
+      case screenshotToolName:
+        return res.json(await runScreenshotTool(args))
+      case architectToolName:
+        return res.json(await runArchitectTool(args))
+      case codeReviewToolName:
+        return res.json(await runCodeReviewTool(args))
+      case documentationHelperToolName:
+        return res.json(await runDocumentationHelperTool(args))
+      default:
+        return res.status(404).json({
+          error: `Tool '${name}' not found`,
+        })
+    }
+  } catch (error) {
+    console.error('Error invoking tool:', error)
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error),
+    })
+  }
+})
+
+app.listen(port, () => {
+  console.log(`MCP Server is running at http://localhost:${port}`)
+})
